@@ -1,0 +1,60 @@
+pipeline {
+  agent any
+
+  environment {
+    IMAGE_NAME = "flask-devsecops"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        git 'https://github.com/YOUR-USERNAME/YOUR-REPO.git'
+      }
+    }
+
+    stage('Install Dependencies') {
+      steps {
+        sh 'pip install -r requirements.txt'
+      }
+    }
+
+    stage('Static Code Analysis (pylint)') {
+      steps {
+        sh 'pip install pylint'
+        sh 'pylint app.py || true'
+      }
+    }
+
+    stage('Secret Scan (GitLeaks)') {
+      steps {
+        sh '''
+          curl -Lo gitleaks https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64
+          chmod +x gitleaks
+          ./gitleaks detect --source=. --report-format=json
+        '''
+      }
+    }
+
+    stage('Docker Build') {
+      steps {
+        sh 'docker build -t $IMAGE_NAME .'
+      }
+    }
+
+    stage('Docker Scan (Trivy)') {
+      steps {
+        sh '''
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+          ./trivy image $IMAGE_NAME
+        '''
+      }
+    }
+
+    stage('Deploy (Simulate)') {
+      steps {
+        echo 'Deploying to Azure or test environment...'
+      }
+    }
+  }
+}
+
